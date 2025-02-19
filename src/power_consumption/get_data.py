@@ -14,57 +14,75 @@ def get_power_consumption_of_tetouan_city() -> tuple[pd.DataFrame, pd.DataFrame]
     y = power_consumption_of_tetouan_city.data.targets
     return X, y
 
-def preprocess_power_consumption_data() -> tuple:
-    # Get raw data
-    X, y = get_power_consumption_of_tetouan_city()
-    
+
+
+
+def preprocess_features(features: pd.DataFrame) -> pd.DataFrame:
+    """
+    Preprocess the features of the power consumption data.
+    """
     # 1. Handle timestamp
-    X['DateTime'] = pd.to_datetime(X['DateTime'])
-    X['Hour'] = X['DateTime'].dt.hour
-    X['Day'] = X['DateTime'].dt.day
-    X['Month'] = X['DateTime'].dt.month
-    X['DayOfWeek'] = X['DateTime'].dt.dayofweek
+    features['DateTime'] = pd.to_datetime(features['DateTime'])
+    features['Hour'] = features['DateTime'].dt.hour
+    features['Day'] = features['DateTime'].dt.day
+    features['Month'] = features['DateTime'].dt.month
+    features['DayOfWeek'] = features['DateTime'].dt.dayofweek
     
     # Add seasonal features using cyclic encoding
     # Hour of day - 24 hour cycle
-    X['Hour_sin'] = np.sin(2 * np.pi * X['Hour']/24)
-    X['Hour_cos'] = np.cos(2 * np.pi * X['Hour']/24)
+    features['Hour_sin'] = np.sin(2 * np.pi * features['Hour']/24)
+    features['Hour_cos'] = np.cos(2 * np.pi * features['Hour']/24)
     
-    # Day of week - 7 day cycle
-    X['DayOfWeek_sin'] = np.sin(2 * np.pi * X['DayOfWeek']/7)
-    X['DayOfWeek_cos'] = np.cos(2 * np.pi * X['DayOfWeek']/7)
+    # Day of week - 7 day cycle 
+    features['DayOfWeek_sin'] = np.sin(2 * np.pi * features['DayOfWeek']/7)
+    features['DayOfWeek_cos'] = np.cos(2 * np.pi * features['DayOfWeek']/7)
     
     # Month - 12 month cycle
-    X['Month_sin'] = np.sin(2 * np.pi * X['Month']/12)
-    X['Month_cos'] = np.cos(2 * np.pi * X['Month']/12)
+    features['Month_sin'] = np.sin(2 * np.pi * features['Month']/12)
+    features['Month_cos'] = np.cos(2 * np.pi * features['Month']/12)    
     
     # Drop original DateTime column and non-cyclic time features
-    X = X.drop(['DateTime', 'Hour', 'Day', 'Month', 'DayOfWeek'], axis=1)
-    
-    
+    features = features.drop(['DateTime', 'Hour', 'Day', 'Month', 'DayOfWeek'], axis=1)
+
     # 2. Handle missing values if any
-    X = X.fillna(X.mean())
-    y = y.fillna(y.mean())
-    
+    features = features.fillna(features.mean())
+
     # 3. Scale the features
     scaler = StandardScaler()
-    X_scaled = scaler.fit_transform(X)
-    X_scaled = pd.DataFrame(X_scaled, columns=X.columns)
+    features_scaled = scaler.fit_transform(features)
+    features_scaled = pd.DataFrame(features_scaled, columns=features.columns)
+    
+    return features_scaled, scaler
+    
+
+
+def preprocess_power_consumption_data(features: pd.DataFrame, targets: pd.DataFrame, test_size: float = 0.2, random_state: int = 42) -> tuple:
+    
+    # 1. Preprocess features
+    features_scaled, scaler = preprocess_features(features)
+    
+    
+    # 2. Handle missing values in targets
+    targets = targets.fillna(targets.mean())
+    
     
     # 4. Split data for each zone
     # Assuming y has columns: ['Zone1', 'Zone2', 'Zone3']
     train_data = {}
     test_data = {}
     
-    for zone in y.columns:
+    for zone in targets.columns:
         X_train, X_test, y_train, y_test = train_test_split(
-            X_scaled, 
-            y[zone],
-            test_size=0.2,
-            random_state=42
+            features_scaled, 
+            targets[zone],
+            test_size=test_size,
+            random_state=random_state
         )
         train_data[zone.replace(' ', '_')] = (X_train, y_train)
         test_data[zone.replace(' ', '_')] = (X_test, y_test)
     
     return train_data, test_data, scaler
 
+def preprocess_tetuan_power_consumption_data() -> tuple:
+    features, targets = get_power_consumption_of_tetouan_city()
+    return preprocess_power_consumption_data(features, targets)

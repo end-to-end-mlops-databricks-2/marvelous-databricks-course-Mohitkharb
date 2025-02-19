@@ -1,0 +1,14 @@
+catalog_name: users
+schema_name: mohit_kumar
+use_case_name: tetuan_power
+project_name: marvelous_project
+ml_model_settings:
+  name: power_consumption_prediction
+  description: Power consumption prediction model
+  type: xgboost
+  test_size: 0.2
+data_settings:
+  workspace_location: Users
+  user_name: mohit.kumar@eneco.com
+  format: delta
+
